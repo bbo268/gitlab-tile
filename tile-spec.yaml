@@ -1,0 +1,44 @@
+apiVersion: mahjong.io/v1alpha1
+kind: Tile
+metadata:
+  name: gitlab
+  category: ContainerApplication
+  version: 9.4.1
+  dependentOnVendorService: EKS
+# Specification
+spec:
+  preRun:
+    stages:
+      - name: gitlab
+        command: |
+          cd $TILE_HOME
+          kubectl create ns gitlab
+          helm install gitlab lib/gitlab-ce -n gitlab
+          helm upgrade gitlab lib/gitlab-ce -n gitlab \
+            --set externalUrl=http://$(kubectl get svc --namespace gitlab gitlab-gitlab-ce -o jsonpath='{.status.loadBalancer.ingress[0].hostname}')
+          kubectl get svc -n gitlab
+          kubectl get pods -n gitlab
+
+  inputs:
+    # String
+    - name: clusterName
+      inputType: String
+      require: true
+    # String
+    - name: masterRoleARN
+      inputType: String
+      require: true
+
+    # Ouptputs represnt output value after launched, for 'ContainerApplication' might need leverage specific command to retrive output.
+  outputs:
+    # String
+    - name: installedNamespace
+      outputType: String
+      defaultValue: gitea
+      description: Custom::String
+    - name: gitlabAddres
+      outputType: String
+      defaultValueCommand: echo "http://$(kubectl get svc --namespace gitlab gitlab-gitlab-ce -o jsonpath='{.status.loadBalancer.ingress[0].hostname}')"
+      description: Custom::String
+
+  notes: []
